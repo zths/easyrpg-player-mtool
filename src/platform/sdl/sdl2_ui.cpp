@@ -40,6 +40,7 @@
 #include "keys.h"
 #include "output.h"
 #include "player.h"
+#include "mtool_rpc.h"
 #include "bitmap.h"
 #include "lcf/scope_guard.h"
 
@@ -803,7 +804,15 @@ void Sdl2Ui::ProcessWindowEvent(SDL_Event &evnt) {
 		// Filter SDL events until focus is regained
 		SDL_Event wait_event;
 
-		while (SDL_WaitEvent(&wait_event)) {
+		MtoolRpc::SetFocusWait(true);
+		while (true) {
+			// 失焦暂停期间主循环停摆，MTool 的游戏命令会全部卡死；
+			// 主线程在这里闲着，顺手排空它的队列
+			MtoolRpc::Update();
+			// 不用 SDL_WaitEvent：没事件时也要定期醒来排队列
+			if (!SDL_WaitEventTimeout(&wait_event, 50)) {
+				continue;
+			}
 			if (wait_event.type == SDL_WINDOWEVENT && wait_event.window.event != SDL_WINDOWEVENT_FOCUS_LOST) {
 				// Process size change etc. events
 				ProcessWindowEvent(wait_event);
@@ -813,6 +822,7 @@ void Sdl2Ui::ProcessWindowEvent(SDL_Event &evnt) {
 				break;
 			}
 		}
+		MtoolRpc::SetFocusWait(false);
 
 		ShowCursor(last);
 

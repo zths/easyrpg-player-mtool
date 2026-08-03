@@ -45,6 +45,9 @@ class PendingMessage {
 
 		const std::vector<std::string>& GetLines() const { return texts; }
 
+		/** Apply fn to every stored line (message lines and choices). Used by the MTool online translation hook. */
+		void ApplyToLines(const std::function<void(std::string&)>& fn) { for (auto& t : texts) { fn(t); } }
+
 		bool IsActive() const { return NumLines() || HasNumberInput(); }
 		int NumLines() const { return texts.size(); }
 		bool IsWordWrapped() const { return word_wrapped; }

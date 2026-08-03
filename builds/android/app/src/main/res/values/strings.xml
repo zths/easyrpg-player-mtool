@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--GameBrowser Activity-->
-    <string name="app_name" translatable="false">EasyRPG Player</string>
+    <string name="app_name" translatable="false">MTool EasyRPG</string>
+    <string name="version_info">版本: %1$s (%2$d)</string>
+    <string name="plugin_notice">本程序为 MTool 的 RPG Maker 2000/2003 支持插件，请从 MTool 启动游戏。</string>
     <string name="autodetect">Autodetect Region (Recommended)</string>
     <string name="west_europe">Western European</string>
     <string name="east_europe">Central/Eastern European</string>

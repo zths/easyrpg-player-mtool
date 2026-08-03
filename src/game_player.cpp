@@ -27,6 +27,7 @@
 #include "game_pictures.h"
 #include "input.h"
 #include "main_data.h"
+#include "mtool_rpc.h"
 #include "options.h"
 #include "player.h"
 #include "util_macro.h"
@@ -340,7 +341,7 @@ void Game_Player::UpdateNextMovementAction() {
 			break;
 	}
 	if (move_dir >= 0) {
-		SetThrough((Player::debug_flag && Input::IsPressed(Input::DEBUG_THROUGH)) || data()->move_route_through);
+		SetThrough((Player::debug_flag && Input::IsPressed(Input::DEBUG_THROUGH)) || data()->move_route_through || MtoolRpc::ForceThrough());
 		Move(move_dir);
 		ResetThrough();
 		if (IsStopping()) {
@@ -694,7 +695,7 @@ bool Game_Player::IsBoardingOrUnboarding() const {
 }
 
 void Game_Player::UpdateEncounterSteps() {
-	if (Player::debug_flag && Input::IsPressed(Input::DEBUG_THROUGH)) {
+	if ((Player::debug_flag && Input::IsPressed(Input::DEBUG_THROUGH)) || MtoolRpc::NoEncounter()) {
 		return;
 	}
 

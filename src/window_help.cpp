@@ -19,6 +19,7 @@
 #include "window_help.h"
 #include "bitmap.h"
 #include "font.h"
+#include "mtool_rpc.h"
 
 Window_Help::Window_Help(int ix, int iy, int iwidth, int iheight, Drawable::Flags flags) :
 	Window_Base(ix, iy, iwidth, iheight, flags),
@@ -54,6 +55,16 @@ void Window_Help::Clear() {
 }
 
 void Window_Help::AddText(std::string text, int color, Text::Alignment align, bool halfwidthspace) {
+	// MTool online translation hook: translate the whole description before
+	// it is split into words below, otherwise each word is queried (and
+	// translated) separately.
+	if (text.length() >= 2 && MtoolRpc::Enabled()) {
+		std::string translated = MtoolRpc::Translate(text);
+		if (!translated.empty() && translated != text) {
+			text = std::move(translated);
+		}
+	}
+
 	std::string::size_type pos = 0;
 	std::string::size_type nextpos = 0;
 	while (nextpos != std::string::npos) {

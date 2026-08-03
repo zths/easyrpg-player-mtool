@@ -18,6 +18,7 @@
 // Headers
 #include <lcf/data.h>
 #include "cache.h"
+#include "mtool_rpc.h"
 #include "output.h"
 #include "utils.h"
 #include "bitmap.h"
@@ -58,6 +59,18 @@ Point Text::Draw(Bitmap& dest, int x, int y, const Font& font, Color color, char
 
 Point Text::Draw(Bitmap& dest, const int x, const int y, const Font& font, const Bitmap& system, const int color, std::string_view text, const Text::Alignment align) {
 	if (text.length() == 0) return { 0, 0 };
+
+	// MTool online translation hook. Callers pass complete strings here
+	// (menu items, names, choice texts); Window_Message renders per glyph
+	// through the overload above and is hooked in StartMessageProcessing
+	// instead. Single-character strings are glyph draws: skip them.
+	std::string mtool_translated;
+	if (text.length() >= 2 && MtoolRpc::Enabled()) {
+		mtool_translated = MtoolRpc::Translate(std::string(text));
+		if (!mtool_translated.empty() && mtool_translated != text) {
+			text = mtool_translated;
+		}
+	}
 
 	Rect dst_rect = Text::GetSize(font, text);
 
@@ -144,6 +157,15 @@ Point Text::Draw(Bitmap& dest, const int x, const int y, const Font& font, const
 Point Text::Draw(Bitmap& dest, const int x, const int y, const Font& font, const Color color, std::string_view text) {
 	if (text.length() == 0) return { 0, 0 };
 
+	// MTool online translation hook (same as the system-color overload above)
+	std::string mtool_translated;
+	if (text.length() >= 2 && MtoolRpc::Enabled()) {
+		mtool_translated = MtoolRpc::Translate(std::string(text));
+		if (!mtool_translated.empty() && mtool_translated != text) {
+			text = mtool_translated;
+		}
+	}
+
 	int dx = x;
 	int mx = x;
 
@@ -183,6 +205,16 @@ Point Text::Draw(Bitmap& dest, const int x, const int y, const Font& font, const
 }
 
 Rect Text::GetSize(const Font& font, std::string_view text) {
+	// MTool online translation hook: measure the translated text so layout
+	// (centering, right alignment) matches what Draw will actually render.
+	std::string mtool_translated;
+	if (text.length() >= 2 && MtoolRpc::Enabled()) {
+		mtool_translated = MtoolRpc::Translate(std::string(text));
+		if (!mtool_translated.empty() && mtool_translated != text) {
+			text = mtool_translated;
+		}
+	}
+
 	Rect rect;
 	Rect rect_tmp;
 

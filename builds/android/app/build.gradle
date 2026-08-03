@@ -8,15 +8,22 @@ android {
         prefab true
     }
     defaultConfig {
-        applicationId "org.easyrpg.player"
+        applicationId "app.mtool.mtoolmobile.easyrpg"
         compileSdkVersion 36
-        minSdkVersion 23
+        // MTool 的 vfs-loader/mtool-loader AAR 要求 minSdk 29（与 mkxp-z 一致）
+        minSdkVersion 29
         targetSdkVersion 36
         versionName VERSION_NAME
         versionCode Integer.parseInt(VERSION_CODE)
     }
     signingConfigs {
         release {
+            storeFile file(RELEASE_STORE_FILE)
+            storePassword RELEASE_STORE_PASSWORD
+            keyAlias RELEASE_KEY_ALIAS
+            keyPassword RELEASE_KEY_PASSWORD
+        }
+        debug {
             storeFile file(RELEASE_STORE_FILE)
             storePassword RELEASE_STORE_PASSWORD
             keyAlias RELEASE_KEY_ALIAS
@@ -44,6 +51,12 @@ android {
         cmake {
             path "../../../CMakeLists.txt"
             version "3.22.1"
+        }
+    }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+            pickFirsts += ['**/libbytehook.so', '**/libshadowhook.so', '**/libc++_shared.so']
         }
     }
     lint {
@@ -79,6 +92,18 @@ allprojects {
     }
 }
 
+// MTool shared deps: facade AARs from MToolMobile plugin-libs, geckoview from
+// the shared Android libs tree. Set via -PmtoolRoot=... or env MTOOL_ROOT.
+def mtoolRootPath = (findProperty('mtoolRoot') ?: System.getenv('MTOOL_ROOT') ?: '').toString().trim()
+def mtoolRoot = { String p ->
+    if (!mtoolRootPath) {
+        throw new GradleException("MTool Android build requires -PmtoolRoot=... or env MTOOL_ROOT")
+    }
+    return "$mtoolRootPath/$p"
+}
+def pluginLibsDir = mtoolRootPath ? mtoolRoot('MToolMobile/plugin-libs') : null
+def mtoolSharedLibsDir = mtoolRootPath ? mtoolRoot('mkxp-z-android/libs') : null
+
 dependencies {
     implementation files("SDL3-${sdlVersion}.aar")
     implementation 'androidx.appcompat:appcompat:1.7.1'
@@ -89,10 +114,83 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.2.1'
     implementation 'androidx.documentfile:documentfile:1.1.0'
     implementation 'org.ini4j:ini4j:0.5.4'
+
+    // ========== MTool 共同依赖 BEGIN ==========
+    // runtime dex 在插件进程里由 DexClassLoader 加载，androidx/gecko 从插件 APK
+    // 解析：版本需 >= mtool-runtime 编译所用。
+    if (mtoolRootPath) {
+        implementation files("$pluginLibsDir/vfs-loader-release.aar")
+        implementation files("$pluginLibsDir/mtool-loader-release.aar")
+        implementation files("$mtoolSharedLibsDir/geckoview-default-omni-arm64-v8a-151.0.20260330173620.aar")
+        implementation files("$mtoolSharedLibsDir/geckoview-exoplayer2-default-151.0.20260330173620.aar")
+    }
+    implementation 'androidx.annotation:annotation:1.8.0'
+    implementation 'androidx.collection:collection:1.4.0'
+    implementation 'androidx.lifecycle:lifecycle-common:2.7.0'
+    implementation 'androidx.lifecycle:lifecycle-process:2.7.0'
+    implementation 'com.bytedance:bytehook:1.1.1'
+    implementation 'com.journeyapps:zxing-android-embedded:4.3.0'
+    implementation 'org.yaml:snakeyaml:2.2'
+    // ========== MTool 共同依赖 END ==========
 }
 
 afterEvaluate {
     preBuild.dependsOn downloadSdlAar
+
+    if (mtoolRootPath) {
+        tasks.named('assembleRelease').configure { it.dependsOn writeEasyRpgApkVersion }
+        tasks.named('assembleDebug').configure { it.dependsOn writeEasyRpgApkVersion }
+
+        tasks.named('assembleRelease').configure { assembleTask ->
+            assembleTask.doLast {
+                def sourceApks = [
+                    file("release/app-release.apk"),
+                    file("$buildDir/outputs/apk/release/app-release.apk"),
+                ].findAll { it.exists() }
+                if (!sourceApks.isEmpty()) {
+                    def srcApk = sourceApks.max { it.lastModified() }
+                    logger.lifecycle("Using newest release APK: ${srcApk}")
+                    def targetDir = file(mtoolRoot('Servers/apkUpload/apks/easyrpg'))
+                    targetDir.mkdirs()
+                    def stateFile = new File(targetDir, 'last_build_apk_path.txt')
+                    def lines = stateFile.exists() ? stateFile.readLines() : []
+                    def lastPath = lines.size() >= 2 ? lines[1].trim() : null
+                    if (lastPath) {
+                        def lastFile = file(lastPath)
+                        if (lastFile.exists()) {
+                            lastFile.delete()
+                            logger.lifecycle("Deleted previous build: ${lastPath}")
+                        }
+                    }
+                    def buildVer = VERSION_CODE.toString()
+                    def nextNum = 1
+                    if (lines.size() >= 1) {
+                        def m = (lines[0].trim() =~ /^(.+)_(\d+)$/)
+                        if (m.find() && m.group(1) == buildVer) {
+                            nextNum = m.group(2).toInteger() + 1
+                        }
+                    }
+                    def baseName = "mtool_easyrpg_v${buildVer}"
+                    def destFile = new File(targetDir, "${baseName}_${nextNum}.apk")
+                    copy { from srcApk; into targetDir; rename { "${baseName}_${nextNum}.apk" } }
+                    stateFile.text = "${buildVer}_${nextNum}\n${destFile.absolutePath}"
+                    logger.lifecycle("Copied to ${destFile}")
+                }
+            }
+        }
+    } else {
+        logger.warn("MTOOL_ROOT / -PmtoolRoot not set; MTool AAR deps and APK publish hooks are skipped")
+    }
+}
+
+if (mtoolRootPath) {
+    def easyrpgApkVersionFile = file(mtoolRoot('rpgProjs/nwProject/www/rawres/apkvers/EasyRPGAPKVersion'))
+    tasks.register('writeEasyRpgApkVersion') {
+        doLast {
+            easyrpgApkVersionFile.parentFile.mkdirs()
+            easyrpgApkVersionFile.text = VERSION_CODE.toString()
+        }
+    }
 }
 
 tasks.register('downloadSdlAar') {

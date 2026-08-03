@@ -64,6 +64,7 @@
 #include <lcf/lmt/reader.h>
 #include <lcf/lsd/reader.h>
 #include "main_data.h"
+#include "mtool_rpc.h"
 #include "output.h"
 #include "player.h"
 #include <lcf/reader_lcf.h>
@@ -183,6 +184,8 @@ void Player::Init(std::vector<std::string> args) {
 
 	Output::Debug("CLI: {}", command_line);
 
+	MtoolRpc::InitFromEnv();
+
 	Game_Clock::logClockInfo();
 	if (rng_seed < 0) {
 		Rand::SeedRandomNumberGenerator(time(NULL));
@@ -232,6 +235,8 @@ void Player::MainLoop() {
 
 	const auto frame_time = Game_Clock::now();
 	Game_Clock::OnNextFrame(frame_time);
+
+	MtoolRpc::Update();
 
 	Player::UpdateInput();
 
@@ -326,6 +331,11 @@ void Player::UpdateInput() {
 	}
 	if (Input::IsSystemPressed(Input::FAST_FORWARD_B)) {
 		speed = Input::GetInputSource()->GetConfig().speed_modifier_b.Get();
+	}
+	// MTool 的持久加速倍率与快进键取大者
+	float mtoolSpeed = static_cast<float>(MtoolRpc::SpeedFactor());
+	if (mtoolSpeed > speed) {
+		speed = mtoolSpeed;
 	}
 	Game_Clock::SetGameSpeedFactor(speed);
 
@@ -714,9 +724,15 @@ void Player::CreateGameObjects() {
 	GetEncoding();
 	escape_symbol = lcf::ReaderUtil::Recode("\\", encoding);
 	if (escape_symbol.empty()) {
+		// 原代码这里对空 vector 取 front() 是 UB，escape_char 变成随机值，
+		// 表现为间歇性全局转义码失效（\C \V \> 全部按字面显示）
 		Output::Error("Invalid encoding: {}.", encoding);
+		escape_char = '\\';
+	} else {
+		escape_char = Utils::DecodeUTF32(Player::escape_symbol).front();
 	}
-	escape_char = Utils::DecodeUTF32(Player::escape_symbol).front();
+	Output::Debug("Escape char: U+{:04X} (symbol: {}, encoding: {})",
+		escape_char, escape_symbol.empty() ? "<empty>" : escape_symbol, encoding);
 
 	// Special handling for games with altered files
 	FileFinder::SetGameFilesystem(HookFilesystem::Detect(FileFinder::Game()));

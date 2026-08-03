@@ -27,6 +27,7 @@
 #include "player.h"
 #include "baseui.h"
 #include "scene_settings.h"
+#include <cstdlib>
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,6 +62,20 @@ Java_org_easyrpg_player_player_EasyRpgPlayerActivity_openSettings(JNIEnv *, jcla
 			Scene::Push(std::make_shared<Scene_Settings>());
 		}
 	});
+}
+
+// Must run before Player::Init on the SDL main thread, so no EpAndroid::schedule here:
+// the env var is process-wide and InitFromEnv reads it later.
+JNIEXPORT void JNICALL
+Java_org_easyrpg_player_player_EasyRpgPlayerActivity_nativeSetMtoolPort(JNIEnv *env, jclass, jstring port) {
+	if (!port) {
+		return;
+	}
+	const char* str = env->GetStringUTFChars(port, nullptr);
+	if (str) {
+		setenv("MTOOL_PORT", str, 1);
+		env->ReleaseStringUTFChars(port, str);
+	}
 }
 
 #ifdef __cplusplus

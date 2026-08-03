@@ -40,6 +40,9 @@ JNIEXPORT void JNICALL Java_org_easyrpg_player_player_EasyRpgPlayerActivity_togg
 JNIEXPORT void JNICALL
 Java_org_easyrpg_player_player_EasyRpgPlayerActivity_openSettings(JNIEnv *, jclass);
 
+JNIEXPORT void JNICALL
+Java_org_easyrpg_player_player_EasyRpgPlayerActivity_nativeSetMtoolPort(JNIEnv *, jclass, jstring);
+
 #ifdef __cplusplus
 }
 #endif

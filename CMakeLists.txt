@@ -272,6 +272,10 @@ add_library(${PROJECT_NAME} OBJECT
 	src/meta.h
 	src/midisequencer.cpp
 	src/midisequencer.h
+	src/mtool_extract.cpp
+	src/mtool_extract.h
+	src/mtool_rpc.cpp
+	src/mtool_rpc.h
 	src/opacity.h
 	src/options.h
 	src/output.cpp
@@ -986,6 +990,27 @@ else()
 		DEFINITION HAVE_NLOHMANN_JSON
 		TARGET nlohmann_json::nlohmann_json
 		ONLY_CONFIG)
+endif()
+
+# MTool online translation integration (needs the MTool loaders repo for
+# the shared socket/RPC headers and nlohmann-json for the RPC envelopes)
+set(PLAYER_MTOOL_LOADERS_DIR "" CACHE PATH "Path to the MTool loaders directory (contains common/ws and LRUCache.hpp)")
+if(NOT PLAYER_MTOOL_LOADERS_DIR)
+	set(PLAYER_MTOOL_LOADERS_DIR "$ENV{MTOOL_LOADERS_DIR}")
+endif()
+if(PLAYER_WITH_NLOHMANN_JSON AND PLAYER_MTOOL_LOADERS_DIR
+		AND EXISTS "${PLAYER_MTOOL_LOADERS_DIR}/common/ws/mtoolsocket_transport.h"
+		AND EXISTS "${PLAYER_MTOOL_LOADERS_DIR}/LRUCache.hpp")
+	target_compile_definitions(${PROJECT_NAME} PUBLIC PLAYER_WITH_MTOOL=1)
+	target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC
+		"${PLAYER_MTOOL_LOADERS_DIR}"
+		"${PLAYER_MTOOL_LOADERS_DIR}/common/ws")
+	if(WIN32)
+		target_link_libraries(${PROJECT_NAME} ws2_32)
+	endif()
+	message(STATUS "MTool integration enabled, loaders dir: ${PLAYER_MTOOL_LOADERS_DIR}")
+else()
+	message(STATUS "MTool integration disabled (nlohmann-json or loaders dir missing)")
 endif()
 
 # Configure Audio backends

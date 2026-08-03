@@ -5,6 +5,10 @@
     android:versionName="1.0"
     android:installLocation="auto">
 
+    <!-- MTool online translation connects to 127.0.0.1 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
     <!-- OpenGL ES 2.0 -->
     <uses-feature android:glEsVersion="0x00020000" />
     <!-- Touchscreen support -->
@@ -38,6 +42,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme"
         android:enableOnBackInvokedCallback="true"
+        android:usesCleartextTraffic="true"
         >
 
         <!-- Setting SDL hints from AndroidManifest.xml: -->
@@ -47,10 +52,10 @@
 
         <!-- Startup Activity -->
         <activity
-            android:name=".InitActivity"
+            android:name="app.mtool.mtoolmobile.easyrpg.AboutActivity"
             android:alwaysRetainTaskState="true"
             android:launchMode="singleInstance"
-            android:theme="@style/AppTheme"
+            android:theme="@style/AppTheme.About"
             android:exported="true"
             android:preferMinimalPostProcessing="true"
             tools:targetApi="r">
@@ -75,6 +80,19 @@
             android:name=".player.EasyRpgPlayerActivity"
             android:configChanges="orientation|screenSize"
             android:theme="@style/AppThemePlayerActivity"/>
+        <!-- MTool 集成入口 Activity（由 MToolMobile 拉起） -->
+        <activity
+            android:name="app.mtool.mtoolmobile.easyrpg.MtoolEasyRpgActivity"
+            android:alwaysRetainTaskState="true"
+            android:configChanges="orientation|screenSize"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/AppThemePlayerActivity"/>
+        <service
+            android:name="app.mtool.mtoolmobile.easyrpg.services.GeckoCrashHandlerService"
+            android:exported="false"
+            android:process=":MTOOL_GeckoCrashHandler">
+        </service>
         <!-- Settings' Activity -->
         <activity
             android:name=".settings.SettingsMainActivity"

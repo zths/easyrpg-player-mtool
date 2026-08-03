@@ -83,6 +83,7 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
     public static final String TAG_SAVE_PATH = "save_path";
     public static final String TAG_COMMAND_LINE = "command_line";
     public static final String TAG_STANDALONE = "standalone_mode";
+    public static final String TAG_MTOOL_PORT = "mtool_port";
     public static final int LAYOUT_EDIT = 12345;
 
     public static boolean samsungMultitouchWorkaround = false;
@@ -112,6 +113,13 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
         super.onCreate(savedInstanceState);
         if (mBrokenLibraries) {
             return;
+        }
+
+        // The SDL main thread (and Player::Init reading MTOOL_PORT) starts after
+        // onCreate, so setting it here is early enough.
+        String mtoolPort = getIntent().getStringExtra(TAG_MTOOL_PORT);
+        if (mtoolPort != null && !mtoolPort.isEmpty()) {
+            nativeSetMtoolPort(mtoolPort);
         }
 
         SettingsManager.init(getApplicationContext());
@@ -415,6 +423,8 @@ public class EasyRpgPlayerActivity extends SDLActivity implements NavigationView
     public static native void resetGame();
 
     public static native void toggleFps();
+
+    public static native void nativeSetMtoolPort(String port);
 
     protected String[] getArguments() {
         return getIntent().getStringArrayExtra(TAG_COMMAND_LINE);

@@ -31,6 +31,7 @@
 #include "game_system.h"
 #include "game_variables.h"
 #include "input.h"
+#include "mtool_rpc.h"
 #include "output.h"
 #include "player.h"
 #include "util_macro.h"
@@ -146,6 +147,18 @@ void Window_Message::StartMessageProcessing(PendingMessage pm) {
 		return;
 	}
 
+	// MTool online translation hook: translate whole lines while the text
+	// is still intact (before word-wrapping and before escape codes like
+	// \N[1] are consumed by rendering).
+	if (MtoolRpc::Enabled()) {
+		pending_message.ApplyToLines([](std::string& line) {
+			std::string translated = MtoolRpc::Translate(line);
+			if (!translated.empty() && translated != line) {
+				line = std::move(translated);
+			}
+		});
+	}
+
 	const auto& lines = pending_message.GetLines();
 
 	int num_lines = 0;
@@ -164,12 +177,23 @@ void Window_Message::StartMessageProcessing(PendingMessage pm) {
 		}
 	};
 
-	if (pending_message.IsWordWrapped()) {
+	// 译文比原文长得多，RM2k 默认不折行，超出的部分会被画到窗口外。选择肢除外：
+	// 折行会打乱行号，而 choice 是靠行号对应到选项的。
+	bool word_wrap = pending_message.IsWordWrapped()
+		|| (MtoolRpc::ForceWordWrap() && !pending_message.HasChoices());
+
+	// 头像占掉的那一块不能算进可用宽度，否则折出来的行还是会被画到窗口外
+	int wrap_limit = width - 24;
+	if (IsFaceEnabled()) {
+		wrap_limit -= LeftMargin + FaceSize + RightFaceMargin;
+	}
+
+	if (word_wrap) {
 		for (const std::string& line : lines) {
 			/* TODO: don't take commands like \> \< into account when word-wrapping */
 			Game_Message::WordWrap(
 					line,
-					width - 24,
+					wrap_limit,
 					[&](std::string_view wrapped_line) {
 						append(std::string(wrapped_line));
 					}
