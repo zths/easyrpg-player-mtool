@@ -37,6 +37,7 @@
             android:textSize="16sp" />
 
         <TextView
+            android:id="@+id/plugin_notice_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
@@ -46,5 +47,13 @@
             android:textColor="#6790FF"
             android:textSize="16sp"
             android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/attribution_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/project_attribution"
+            android:textSize="14sp" />
     </LinearLayout>
 </LinearLayout>

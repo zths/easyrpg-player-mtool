@@ -3,6 +3,7 @@
     <!--GameBrowser Activity-->
     <string name="app_name" translatable="false">MTool EasyRPG</string>
     <string name="version_info">版本: %1$s (%2$d)</string>
+    <string name="project_attribution">基于 GPL 许可的开源项目 EasyRPG Player\ngithub.com/zths/easyrpg-player-mtool</string>
     <string name="plugin_notice">本程序为 MTool 的 RPG Maker 2000/2003 支持插件，请从 MTool 启动游戏。</string>
     <string name="autodetect">Autodetect Region (Recommended)</string>
     <string name="west_europe">Western European</string>
